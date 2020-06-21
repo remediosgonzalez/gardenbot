@@ -7,3 +7,6 @@ BOT_TOKEN = ''
 
 # Heroku Postgres
 DATABASE_URL = ''
+
+# Heroku Redis
+REDIS_URL = ''
