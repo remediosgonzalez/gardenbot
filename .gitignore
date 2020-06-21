@@ -1,0 +1,8 @@
+# Configs file
+/configs/configs.py
+
+# Environment folder
+/venv/
+
+# Static files
+/staticfiles/
