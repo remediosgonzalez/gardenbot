@@ -5,9 +5,11 @@
       <w>bitcoinlib</w>
       <w>cleardb</w>
       <w>cryptotelegramtestbot</w>
+      <w>gunicorn</w>
       <w>jawsdb</w>
       <w>levelname</w>
       <w>mykola</w>
+      <w>startbot</w>
       <w>testnet</w>
     </words>
   </dictionary>
