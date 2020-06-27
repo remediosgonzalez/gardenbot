@@ -2,8 +2,13 @@
   <dictionary name="mykol">
     <words>
       <w>asctime</w>
+      <w>bitcoinlib</w>
+      <w>cleardb</w>
       <w>cryptotelegramtestbot</w>
+      <w>jawsdb</w>
       <w>levelname</w>
+      <w>mykola</w>
+      <w>testnet</w>
     </words>
   </dictionary>
 </component>

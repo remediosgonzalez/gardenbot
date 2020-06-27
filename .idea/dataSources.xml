@@ -8,5 +8,26 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://ec2-34-230-231-71.compute-1.amazonaws.com:5432/dfqi5qfo1m8ceg</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="JawsDB MySQL" uuid="341f40c4-8f20-4375-b025-b7f10d96ff9f">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <remarks>Heroku add-on</remarks>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://nnmeqdrilkem9ked.cbetxkdyhwsb.us-east-1.rds.amazonaws.com:3306/w7052t17qxqiili5</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="bitcoinlib" uuid="4ded98b4-3db7-4bf0-ac01-30fe2fbf6996">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\mykol\.bitcoinlib\database\bitcoinlib.sqlite</jdbc-url>
+      <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/license.txt</url>
+        </library>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/sqlite-jdbc-3.25.1.jar</url>
+        </library>
+      </libraries>
+    </data-source>
   </component>
 </project>
