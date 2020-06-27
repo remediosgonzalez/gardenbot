@@ -1,8 +1,6 @@
 from aiogram.utils import executor
 from django.core.management import BaseCommand
 
-from bot.sources.bot import dp, startup, shutdown
-
 
 class Command(BaseCommand):
     help = 'Starts Telegram bot'
@@ -17,4 +15,6 @@ class Command(BaseCommand):
                             )
 
     def handle(self, *args, **options):
-        executor.start_polling(dp, skip_updates=True, on_startup=startup, on_shutdown=shutdown)
+        from bot.sources.bot import dp, startup, shutdown
+
+        executor.start_polling(dp, on_startup=startup, on_shutdown=shutdown)
