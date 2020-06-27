@@ -6,8 +6,8 @@ import bitcoinlib
 import django
 from django.core.management import BaseCommand
 
+import configs
 from bot.sources.tools import replies, logging_tools
-from configs import configs
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
