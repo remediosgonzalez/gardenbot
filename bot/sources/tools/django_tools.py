@@ -1,7 +1,8 @@
 import inspect
 from functools import wraps
+from typing import *
 
-from aiogram import types
+from aiogram import types as aiogram_types
 from asgiref.sync import sync_to_async as _sync_to_async
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
@@ -63,15 +64,26 @@ def next_async(it):
 
 
 @sync_to_async
-def get_or_create_user(user: types.User) -> User:
+def get_or_create_user(user: aiogram_types.User, return_tuple=False):
     try:
-        return User.objects.get(id=user.id)
+        user = User.objects.get(id=user.id)
+        created = False
     except User.DoesNotExist:
-        return User.objects.create_user(**dict(user))
+        user = User.objects.create_user(**dict(user))
+        created = True
+    return (user, created) if return_tuple else user
+
+
+@sync_to_async
+def user_get_if_exists(user_id: Union[int, str]) -> Union[User, NoReturn]:
+    try:
+        return User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return None
 
 
 def auth_user_decorator(func):
-    async def wrapper(msg: types.Message, *args, **kwargs):
+    async def wrapper(msg: aiogram_types.Message, *args, **kwargs):
         user = await sync_to_async(User.objects.get)(id=msg.from_user.id)
         return await func(msg, user, *args, **kwargs)
     return wrapper
@@ -84,7 +96,7 @@ def staff_account_required(func):
     :param func:
     :return:
     """
-    async def wrapper(msg: types.Message, user, *args, **kwargs):
+    async def wrapper(msg: aiogram_types.Message, user, *args, **kwargs):
         if user.is_staff or user.is_superuser:
             return await func(msg, user, *args, **kwargs)
         else:

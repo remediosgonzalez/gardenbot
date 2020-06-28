@@ -7,7 +7,6 @@ import django
 from django.core.management import BaseCommand
 
 import configs
-from accounts.models import WalletSweep
 from bot.sources.tools import replies, logging_tools, bitcoin_tools
 
 log = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         log.info('Importing modules...')
         from users.models import User
-        from accounts.models import Account
+        from accounts.models import WalletSweep
         from bot.sources.bot import bot
         log.info('Modules imported.')
 
@@ -56,10 +55,15 @@ class Command(BaseCommand):
 
                     log.info(f'Adding {balance} to account of user {user.id}')
                     log.info('Getting account...')
-                    account = Account.objects.get(user=user)
+                    account = user.account
                     log.info('Successful.')
                     account.balance = balance
                     log.info('Saving...')
+                    if ref_account := user.is_referral_of_user.account:
+                        log.info(f'Adding {balance/10} to referral account {ref_account.user.id}')
+                        ref_account.balance = balance/10
+                        ref_account.save()
+                        log.info('Referral funds added.')
                     account.save()
                     log.info('Successful.')
 

@@ -29,8 +29,25 @@ dp.middleware.setup(LoggingMiddleware())
 
 @dp.message_handler(commands=['start'])
 async def start(msg: types.Message, *args, **kwargs):
-    await django_tools.get_or_create_user(msg.from_user)
-    await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False)
+    user, is_new = await django_tools.get_or_create_user(msg.from_user, return_tuple=True)
+    user: User
+    if msg.get_args().isdigit():
+        if not is_new:
+            await msg.reply(replies.NOT_A_NEW_USER, reply=False, reply_markup=ReplyKeyboardRemove())
+            return
+        if ref_user := await django_tools.user_get_if_exists(msg.get_args()):
+            ref_user: User
+            if user.is_referral_of_user:
+                await msg.reply(replies.REFERRAL_ALREADY, reply=False, reply_markup=ReplyKeyboardRemove())
+                return
+            user.is_referral_of_user = ref_user
+            await sync_to_async(user.save)()
+            await msg.bot.send_message(ref_user.id,
+                                       replies.REFERRAL_SUCCESS_TO_REF_USER.format(
+                                           first_name=msg.from_user.first_name,
+                                           last_name=msg.from_user.last_name,
+                                       ))
+    await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message_handler(commands=['deposit'])
@@ -39,7 +56,7 @@ async def deposit(msg: types.Message, user: User, *args, **kwargs):
     wallet = bitcoin_tools.create_or_open_wallet_for_user(user.id)
     address = bitcoin_tools.get_wallet_address(wallet)
     await msg.reply(replies.DEPOSIT, reply=False)
-    await msg.reply(address, reply=False)
+    await msg.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 # Adding item part
@@ -47,21 +64,21 @@ async def deposit(msg: types.Message, user: User, *args, **kwargs):
 @django_tools.auth_user_decorator
 @django_tools.staff_account_required
 async def add_item(msg: types.Message, user: User, *args, **kwargs):
-    await msg.reply(replies.ASK_ITEM_NAME, reply=False)
+    await msg.reply(replies.ASK_ITEM_NAME, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_name.set()
 
 
 @dp.message_handler(state=states.AddingItemStates.waiting_for_name, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(name=msg.text)
-    await msg.reply(replies.ASK_ITEM_DESCRIPTION, reply=False)
+    await msg.reply(replies.ASK_ITEM_DESCRIPTION, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_description.set()
 
 
 @dp.message_handler(state=states.AddingItemStates.waiting_for_description, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(description=msg.text)
-    await msg.reply(replies.ASK_ITEM_PRICE, reply=False)
+    await msg.reply(replies.ASK_ITEM_PRICE, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_price.set()
 
 
@@ -104,7 +121,8 @@ async def confirm_buy_item(msg: types.Message, state: FSMContext, *args, **kwarg
         await state.update_data(item_id=item.id)
         await states.BuyingItemStates.waiting_for_confirmation.set()
     else:
-        await msg.reply(replies.BUY_ITEM_NOT_FOUND.format(name=msg.text), reply=False)
+        await msg.reply(replies.BUY_ITEM_NOT_FOUND.format(name=msg.text),
+                        reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message_handler(state=states.BuyingItemStates.waiting_for_confirmation, content_types=types.ContentTypes.TEXT)
@@ -115,7 +133,8 @@ async def add_item_to_cart(msg: types.Message, state: FSMContext, *args, **kwarg
         await msg.reply(replies.BUY_ITEM_SUCCESS, reply=False, reply_markup=ReplyKeyboardRemove())
         await state.reset_state(with_data=False)
     else:
-        await msg.reply(replies.BUY_ITEM_ABORTED, reply=False)
+        await state.reset_state(with_data=False)
+        await msg.reply(replies.BUY_ITEM_ABORTED, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 # Cart part
@@ -129,13 +148,13 @@ async def get_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
         message += f'{replies.CARD_ITEM.format(n=n+1, name=item.name, price=item.price)}\n'
     if message:
         await msg.reply(message, reply=False)
-    await msg.reply(replies.EMPTY_CART_OR_CHECKOUT, reply=False)
+    await msg.reply(replies.EMPTY_CART_OR_CHECKOUT, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message_handler(state='*', commands=['empty_cart'])
 async def empty_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(cart=[])
-    await msg.reply(replies.EMPTY_CART_SUCCESS, reply=False)
+    await msg.reply(replies.EMPTY_CART_SUCCESS, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 # Checkout part
@@ -144,9 +163,9 @@ async def checkout(msg: types.Message, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
     if not cart:
-        await msg.reply(replies.CART_IS_EMPTY, reply=False)
+        await msg.reply(replies.CART_IS_EMPTY, reply=False, reply_markup=ReplyKeyboardRemove())
         return
-    await msg.reply(replies.ASK_FOR_ADDRESS, reply=False)
+    await msg.reply(replies.ASK_FOR_ADDRESS, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.CheckoutStates.waiting_for_address.set()
 
 
@@ -184,11 +203,19 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
     account = await sync_to_async(Account.objects.get)(user=user)
     if account.balance >= total_price:
         order = await sync_to_async(Order.objects.create)(user=user, items=items, address=user_data.get('address'))
-        await msg.reply(replies.ORDER_SUCCESS.format(id=order.id))
+        await msg.reply(replies.ORDER_SUCCESS.format(id=order.id), reply=False, reply_markup=ReplyKeyboardRemove())
         await state.finish()
     else:
-        await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False)
+        await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False, reply_markup=ReplyKeyboardRemove())
         await state.reset_state(with_data=False)
+
+
+# Referral part
+@dp.message_handler(state='*', commands=['referral'])
+async def referral(msg: types.Message, *args, **kwargs):
+    breakpoint()
+    link = f'https://t.me/{(await bot.get_me()).username}?start={msg.from_user.id}'
+    await msg.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 async def startup(dispatcher: Dispatcher):

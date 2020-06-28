@@ -37,3 +37,10 @@ ADDRESS_SET_ASK_PAYMENT_CONFIRM = 'Address set. You are paying {total_price} for
 ORDER_SUCCESS = 'Your order ID is {id}. You will get a notify when it\'s delivered.'
 NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Use /deposit to add some.'
 
+# Referral part
+REFERRAL_LINK = 'Here is the link you can share with your referrals \n{link}'
+REFERRAL_ALREADY = 'You are already a referral, you can be a referral of only one user.'
+NOT_A_NEW_USER = 'Only new users can be referrals.'
+REFERRAL_SUCCESS_TO_REF_USER = 'Thank you for inviting a new user {first_name} {last_name}.' \
+                               'You will get 10% of their spend.'
+
