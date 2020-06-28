@@ -144,7 +144,7 @@ async def checkout(msg: types.Message, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
     if not cart:
-        await msg.reply(replies.EMPTY_CART, reply=False)
+        await msg.reply(replies.CART_IS_EMPTY, reply=False)
         return
     await msg.reply(replies.ASK_FOR_ADDRESS, reply=False)
     await states.CheckoutStates.waiting_for_address.set()

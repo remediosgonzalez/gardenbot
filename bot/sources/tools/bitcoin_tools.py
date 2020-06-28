@@ -13,3 +13,10 @@ def create_or_open_wallet_for_user(user_id: int, db_uri=None, network=None) -> b
 def get_wallet_address(wallet: bitcoinlib.wallets.HDWallet) -> str:
     address = wallet.get_key().address
     return address
+
+
+def get_address_sweep():
+    if configs.NETWORK == 'bitcoin':
+        return configs.ADDRESS_bitcoin
+    elif configs.NETWORK == 'testnet':
+        return configs.ADDRESS_testnet

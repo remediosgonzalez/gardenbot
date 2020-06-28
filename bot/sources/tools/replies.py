@@ -1,6 +1,6 @@
 HELLO = 'Hello! Here is the basic bot that accepts payments in bitcoin. Currently using `{network_name}`'
 DEPOSIT = 'Send some funds to this address:'
-FUNDS_ADDED = '{string_value} added to your account'
+FUNDS_ADDED = '{balance} added to your account'
 NOT_AUTHENTICATED = 'Sorry, you are not allowed to do that.'
 
 YES = 'Yes'
