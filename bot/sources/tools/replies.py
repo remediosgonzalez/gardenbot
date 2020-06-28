@@ -39,8 +39,13 @@ NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Use /deposit to add some.'
 
 # Referral part
 REFERRAL_LINK = 'Here is the link you can share with your referrals \n{link}'
-REFERRAL_ALREADY = 'You are already a referral, you can be a referral of only one user.'
 NOT_A_NEW_USER = 'Only new users can be referrals.'
 REFERRAL_SUCCESS_TO_REF_USER = 'Thank you for inviting a new user {first_name} {last_name}.' \
                                'You will get 10% of their spend.'
+
+# Manager part
+NOTIFY_MANAGER_NEW_ORDER = 'New order! User {first_name} {last_name} {username_with_space}(ID: {user_id}) ' \
+                           'placed a new order (ID: {order_id})\n' \
+                           'Address: {address}.\n' \
+                           'Here are the items:\n\n{items_text}'
 

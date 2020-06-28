@@ -20,9 +20,15 @@ class Item(models.Model):
 
 class Order(models.Model):
     user = models.ForeignKey(User, models.SET_NULL, null=True)
-    items = models.ManyToManyField(Item)
+    price = models.FloatField()
     address = models.TextField()
     status = models.CharField(max_length=255, blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     date_created = models.DateTimeField(default=timezone.now, auto_created=True)
     date_completed = models.DateTimeField(blank=True, null=True)
+
+
+class OrderItem(models.Model):
+    item = models.ForeignKey(Item, models.SET_NULL, null=True)
+    order = models.ForeignKey(Order, models.CASCADE)
+    quantity = models.IntegerField(default=1)  # TODO: [6/28/2020 by Mykola] make quantity working

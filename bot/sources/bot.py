@@ -1,9 +1,10 @@
 import logging
+from urllib.parse import quote
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from django.contrib.auth import get_user_model
 
 import configs
@@ -11,11 +12,10 @@ from accounts.models import Account
 from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tools, keyboards, states
 from bot.sources.tools.django_tools import sync_to_async, sync_to_async_iterable
 from bot.sources.tools.redis_storage import redis_storage
-from shop.models import Item, Order
+from shop.models import Item, Order, OrderItem
 from users import models
 
 User: models.User = get_user_model()
-
 
 log = logging.getLogger('bot')
 log.setLevel(logging.INFO)
@@ -36,10 +36,6 @@ async def start(msg: types.Message, *args, **kwargs):
             await msg.reply(replies.NOT_A_NEW_USER, reply=False, reply_markup=ReplyKeyboardRemove())
             return
         if ref_user := await django_tools.user_get_if_exists(msg.get_args()):
-            ref_user: User
-            if user.is_referral_of_user:
-                await msg.reply(replies.REFERRAL_ALREADY, reply=False, reply_markup=ReplyKeyboardRemove())
-                return
             user.is_referral_of_user = ref_user
             await sync_to_async(user.save)()
             await msg.bot.send_message(ref_user.id,
@@ -145,7 +141,7 @@ async def get_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
     message = f'{replies.CART_REVIEW.format(n=len(cart))}\n\n'
     for n, item_id in enumerate(cart):
         item: Item = await sync_to_async(Item.objects.get)(id=item_id)
-        message += f'{replies.CARD_ITEM.format(n=n+1, name=item.name, price=item.price)}\n'
+        message += f'{replies.CARD_ITEM.format(n=n + 1, name=item.name, price=item.price)}\n'
     if message:
         await msg.reply(message, reply=False)
     await msg.reply(replies.EMPTY_CART_OR_CHECKOUT, reply=False, reply_markup=ReplyKeyboardRemove())
@@ -202,9 +198,30 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
         total_price += item.price
     account = await sync_to_async(Account.objects.get)(user=user)
     if account.balance >= total_price:
-        order = await sync_to_async(Order.objects.create)(user=user, items=items, address=user_data.get('address'))
+        account.balance -= total_price
+        await sync_to_async(account.save)()
+        order = await sync_to_async(Order.objects.create)(user=user,
+                                                          address=user_data.get('address'),
+                                                          price=total_price)
+        await sync_to_async(order.save)()
+        for item in items:
+            await sync_to_async(OrderItem.objects.create)(order=order, item=item)
         await msg.reply(replies.ORDER_SUCCESS.format(id=order.id), reply=False, reply_markup=ReplyKeyboardRemove())
         await state.finish()
+
+        # Notify manager
+        username_with_space = f'@{msg.from_user.username} ' if msg.from_user.username else ''
+        message = replies.NOTIFY_MANAGER_NEW_ORDER.format(
+            first_name=msg.from_user.first_name,
+            last_name=msg.from_user.last_name,
+            username_with_space=username_with_space,
+            user_id=msg.from_user.id,
+            order_id=order.id,
+            address=order.address,
+            items_text=str(*list(f'{n}. {item.name} (ID: {item.id})\n' for n, item in enumerate(items)))
+        )
+        await msg.bot.send_message(configs.TG_MANAGER_ID, message)
+
     else:
         await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False, reply_markup=ReplyKeyboardRemove())
         await state.reset_state(with_data=False)
@@ -213,9 +230,12 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
 # Referral part
 @dp.message_handler(state='*', commands=['referral'])
 async def referral(msg: types.Message, *args, **kwargs):
-    breakpoint()
     link = f'https://t.me/{(await bot.get_me()).username}?start={msg.from_user.id}'
-    await msg.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=ReplyKeyboardRemove())
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton(text='Share with friend!',
+                                    url=f'https://t.me/share/url?url={link}&'
+                                        f'text={quote("Check this bot out!")}'))
+    await msg.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=markup)
 
 
 async def startup(dispatcher: Dispatcher):
