@@ -36,6 +36,7 @@ ADDRESS_SET_ASK_PAYMENT_CONFIRM = 'Address set. You are paying {total_price} for
                                   'Your balance is {balance}. Proceed?'
 ORDER_SUCCESS = 'Your order ID is {id}. You will get a notify when it\'s delivered.'
 NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Use /deposit to add some.'
+ORDER_DELIVERED = 'Your order (ID: {order_id}) is delivered. Have a nice day!'
 
 # Referral part
 REFERRAL_LINK = 'Here is the link you can share with your referrals \n{link}'
@@ -48,4 +49,4 @@ NOTIFY_MANAGER_NEW_ORDER = 'New order! User {first_name} {last_name} {username_w
                            'placed a new order (ID: {order_id})\n' \
                            'Address: {address}.\n' \
                            'Here are the items:\n\n{items_text}'
-
+ORDER_COMPLETED = 'Order (ID: {order_id}) is marked as completed. User will get a notify.'

@@ -6,6 +6,7 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 import configs
 from accounts.models import Account
@@ -220,11 +221,29 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
             address=order.address,
             items_text=str(*list(f'{n}. {item.name} (ID: {item.id})\n' for n, item in enumerate(items)))
         )
-        await msg.bot.send_message(configs.TG_MANAGER_ID, message)
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(text='Mark completed', callback_data=f'complete-order-{order.id}'))
+        await msg.bot.send_message(configs.TG_MANAGER_ID, message, reply_markup=markup)
 
     else:
         await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False, reply_markup=ReplyKeyboardRemove())
         await state.reset_state(with_data=False)
+
+
+@dp.callback_query_handler(lambda query: query.data.startswith('complete-order-'))
+async def complete_order(query: types.CallbackQuery):
+    data = query.data
+    order_id = data[len('complete-order-'):]
+    order = await sync_to_async(Order.objects.get)(id=order_id)
+    order.status = 'completed'
+    order.is_completed = True
+    order.date_completed = timezone.now()
+    await sync_to_async(order.save)()
+    await query.bot.send_message(query.from_user.id, replies.ORDER_COMPLETED.format(order_id=order.id))
+
+    # Notify user
+    user = await sync_to_async(User.objects.get)(id=order.user_id)
+    await query.bot.send_message(user.id, replies.ORDER_DELIVERED.format(order_id=order.id))
 
 
 # Referral part
