@@ -290,12 +290,15 @@ async def create_support_ticket(msg: types.Message, user: User, state: FSMContex
 
 
 @dp.message_handler(lambda msg: msg.from_user.id == configs.TG_MANAGER_ID,
-                    lambda msg: msg.reply_to_message,
+                    lambda msg: bool(msg.reply_to_message),
                     content_types=types.ContentTypes.TEXT)
 async def reply_to_ticket(msg: types.Message, *args, **kwargs):
-    ticket: SupportTicket = await sync_to_async(SupportTicket.objects.get)(
-        manager_message_id=msg.reply_to_message.message_id,
-    )
+    try:
+        ticket: SupportTicket = await sync_to_async(SupportTicket.objects.get)(
+            manager_message_id=msg.reply_to_message.message_id,
+        )
+    except SupportTicket.DoesNotExist:
+        return
     ticket.is_resolved = True
     ticket.date_resolved = timezone.now()
     await sync_to_async(ticket.save)()
