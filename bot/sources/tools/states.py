@@ -16,3 +16,7 @@ class BuyingItemStates(StatesGroup):
 class CheckoutStates(StatesGroup):
     waiting_for_address = State()
     waiting_for_payment_confirmation = State()
+
+
+class SupportStates(StatesGroup):
+    waiting_for_ticket = State()

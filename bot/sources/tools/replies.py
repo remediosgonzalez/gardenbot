@@ -12,7 +12,6 @@ ASK_ITEM_DESCRIPTION = 'What\'s the description?'
 ASK_ITEM_PRICE = 'What\'s the price? (provide the price in smallest units, for example, satoshi) '
 ASK_ITEM_CONFIRMATION = 'You\'re adding an item with name {name}, description {description} and price {price}. Proceed?'
 
-
 ADD_ITEM_ABORTED = 'Adding cancelled. You can start again using command /add_item'
 ADD_ITEM_SUCCESS = 'Item added.'
 
@@ -50,3 +49,13 @@ NOTIFY_MANAGER_NEW_ORDER = 'New order! User {first_name} {last_name} {username_w
                            'Address: {address}.\n' \
                            'Here are the items:\n\n{items_text}'
 ORDER_COMPLETED = 'Order (ID: {order_id}) is marked as completed. User will get a notify.'
+
+# Support part
+SUPPORT_MESSAGE = 'Please describe your problem.'
+TICKET_CREATED = 'Your ticket was created.'
+NOTIFY_MANAGER_NEW_TICKET = 'New support ticket! User {first_name} {last_name} {username_with_space}(ID: {user_id}) ' \
+                            'created a new ticket (ID: {ticket_id})\n\n' \
+                            '{ticket_text}\n\n' \
+                            'Send a reply to this message and it will be forwarded to the user.'
+TICKET_RESOLVED = 'Your ticket was resolver. Reply from our manager:\n\n' \
+                  '{text}\n\n'

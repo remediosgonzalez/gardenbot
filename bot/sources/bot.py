@@ -14,6 +14,7 @@ from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tool
 from bot.sources.tools.django_tools import sync_to_async, sync_to_async_iterable
 from bot.sources.tools.redis_storage import redis_storage
 from shop.models import Item, Order, OrderItem
+from support.models import SupportTicket
 from users import models
 
 User: models.User = get_user_model()
@@ -255,6 +256,55 @@ async def referral(msg: types.Message, *args, **kwargs):
                                     url=f'https://t.me/share/url?url={link}&'
                                         f'text={quote("Check this bot out!")}'))
     await msg.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=markup)
+
+
+# Support part
+@dp.message_handler(state='*', commands=['support'])
+async def support(msg: types.Message, *args, **kwargs):
+    await msg.reply(replies.SUPPORT_MESSAGE, reply=False, reply_markup=ReplyKeyboardRemove())
+    await states.SupportStates.waiting_for_ticket.set()
+
+
+@dp.message_handler(state=states.SupportStates.waiting_for_ticket, content_types=types.ContentTypes.TEXT)
+@django_tools.auth_user_decorator
+async def create_support_ticket(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
+    ticket: SupportTicket = await sync_to_async(SupportTicket.objects.create)(from_user=user,
+                                                                              text=msg.text,
+                                                                              user_message_id=msg.message_id)
+    await msg.reply(replies.TICKET_CREATED, reply=False, reply_markup=ReplyKeyboardRemove())
+    await state.reset_state(with_data=False)
+
+    # Notify manager
+    username_with_space = f'@{msg.from_user.username} ' if msg.from_user.username else ''
+    message = replies.NOTIFY_MANAGER_NEW_TICKET.format(
+        first_name=msg.from_user.first_name,
+        last_name=msg.from_user.last_name,
+        username_with_space=username_with_space,
+        user_id=msg.from_user.id,
+        ticket_id=ticket.id,
+        ticket_text=ticket.text,
+    )
+    msg_bot = await msg.bot.send_message(configs.TG_MANAGER_ID, message, reply_markup=ReplyKeyboardRemove())
+    ticket.manager_message_id = msg_bot.message_id
+    await sync_to_async(ticket.save)()
+
+
+@dp.message_handler(lambda msg: msg.from_user.id == configs.TG_MANAGER_ID,
+                    lambda msg: msg.reply_to_message,
+                    content_types=types.ContentTypes.TEXT)
+async def reply_to_ticket(msg: types.Message, *args, **kwargs):
+    ticket: SupportTicket = await sync_to_async(SupportTicket.objects.get)(
+        manager_message_id=msg.reply_to_message.message_id,
+    )
+    ticket.is_resolved = True
+    ticket.date_resolved = timezone.now()
+    await sync_to_async(ticket.save)()
+
+    # Send notify to user
+    # noinspection PyTypeChecker
+    await msg.bot.send_message(ticket.from_user_id,
+                               replies.TICKET_RESOLVED.format(text=msg.text),
+                               reply_to_message_id=ticket.user_message_id)
 
 
 async def startup(dispatcher: Dispatcher):

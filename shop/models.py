@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.utils import timezone
 
 User = get_user_model()
 
@@ -24,7 +23,7 @@ class Order(models.Model):
     address = models.TextField()
     status = models.CharField(max_length=255, blank=True, null=True)
     is_completed = models.BooleanField(default=False)
-    date_created = models.DateTimeField(default=timezone.now, auto_created=True)
+    date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(blank=True, null=True)
 
 

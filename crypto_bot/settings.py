@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'shop',
     'accounts',
     'users',
+    'support',
     # Third-party apps
 ]
 
