@@ -59,13 +59,14 @@ class Command(BaseCommand):
                     log.info('Successful.')
                     account.balance = balance
                     log.info('Saving...')
-                    if ref_account := user.is_referral_of_user.account:
-                        log.info(f'Adding {balance/10} to referral account {ref_account.user.id}')
-                        ref_account.balance = balance/10
-                        ref_account.save()
-                        log.info('Referral funds added.')
                     account.save()
                     log.info('Successful.')
+                    if referral_user := user.is_referral_of_user:
+                        referral_account = referral_user.account
+                        log.info(f'Adding {balance/10} to referral account {referral_user.id}')
+                        referral_account.balance = balance/10
+                        referral_account.save()
+                        log.info('Referral funds added.')
 
                     log.info('Sending notification...')
                     loop.run_until_complete(
