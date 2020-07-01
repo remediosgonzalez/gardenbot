@@ -1,5 +1,8 @@
 HELLO = 'Hello! Here is the basic bot that accepts payments in bitcoin. Currently using `{network_name}`'
-DEPOSIT = 'Send some funds to this address:'
+
+# Deposit part
+GENERATING_ADDRESS = 'Generation a new address for you. It may take some time.'
+DEPOSIT = 'Done. Send some funds to this address:'
 FUNDS_ADDED = '{balance} added to your account'
 NOT_AUTHENTICATED = 'Sorry, you are not allowed to do that.'
 
@@ -16,25 +19,23 @@ ADD_ITEM_ABORTED = 'Adding cancelled. You can start again using command /add_ite
 ADD_ITEM_SUCCESS = 'Item added.'
 
 # Buying item part
-BUY_ASK_ITEM_NAME = 'Please provide item\'s name'
-BUY_ITEM_CONFIRMATION = 'You\'re buying the item name {name}. It costs {price}'
-BUY_ITEM_NOT_FOUND = 'There is no item with name {name}'
-BUY_ITEM_ABORTED = 'Buying cancelled. You can start again using command /buy_item'
-BUY_ITEM_SUCCESS = 'Item added to cart. Send /buy_item to buy more or /cart to complete your order.'
+ITEM_DESCRIPTION = 'Name: {name}\n\n' \
+                   'Description: {description}\n\n' \
+                   'Price: {price}'
+BUY_ITEM_SUCCESS = 'Item added to your cart'
 
 # Cart part
 CART_REVIEW = 'Your cart has {n} items.'
 CARD_ITEM = '{n}. {name}, the price is {price}'
 EMPTY_CART_SUCCESS = 'Your cart is now empty.'
-EMPTY_CART_OR_CHECKOUT = 'You can /empty_cart or /checkout.'
 
 # Checkout part
-CART_IS_EMPTY = 'Your cart is empty. Consider buying something using /buy_item.'
+CART_IS_EMPTY = 'Your cart is empty'
 ASK_FOR_ADDRESS = 'Please, provide your address.'
 ADDRESS_SET_ASK_PAYMENT_CONFIRM = 'Address set. You are paying {total_price} for {n} items. ' \
                                   'Your balance is {balance}. Proceed?'
 ORDER_SUCCESS = 'Your order ID is {id}. You will get a notify when it\'s delivered.'
-NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Use /deposit to add some.'
+NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Go to /start and add some.'
 ORDER_DELIVERED = 'Your order (ID: {order_id}) is delivered. Have a nice day!'
 
 # Referral part

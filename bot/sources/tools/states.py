@@ -8,11 +8,6 @@ class AddingItemStates(StatesGroup):
     waiting_for_confirmation = State()
 
 
-class BuyingItemStates(StatesGroup):
-    waiting_for_item = State()
-    waiting_for_confirmation = State()
-
-
 class CheckoutStates(StatesGroup):
     waiting_for_address = State()
     waiting_for_payment_confirmation = State()

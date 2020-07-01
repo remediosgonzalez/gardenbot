@@ -4,14 +4,14 @@ from urllib.parse import quote
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 import configs
 from accounts.models import Account
 from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tools, keyboards, states
-from bot.sources.tools.django_tools import sync_to_async, sync_to_async_iterable
+from bot.sources.tools.django_tools import sync_to_async
 from bot.sources.tools.redis_storage import redis_storage
 from shop.models import Item, Order, OrderItem
 from support.models import SupportTicket
@@ -29,7 +29,7 @@ dp = Dispatcher(bot, storage=redis_storage)
 dp.middleware.setup(LoggingMiddleware())
 
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(state='*', commands=['start'])
 async def start(msg: types.Message, *args, **kwargs):
     user, is_new = await django_tools.get_or_create_user(msg.from_user, return_tuple=True)
     user: User
@@ -45,16 +45,19 @@ async def start(msg: types.Message, *args, **kwargs):
                                            first_name=msg.from_user.first_name,
                                            last_name=msg.from_user.last_name,
                                        ))
-    await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False, reply_markup=ReplyKeyboardRemove())
+    await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False,
+                    reply_markup=keyboards.start_keyboard)
 
 
-@dp.message_handler(commands=['deposit'])
+@dp.callback_query_handler(lambda query: query.data == 'deposit', state='*')
 @django_tools.auth_user_decorator
-async def deposit(msg: types.Message, user: User, *args, **kwargs):
+async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
+    await query.message.reply(replies.GENERATING_ADDRESS, reply=False)
     wallet = bitcoin_tools.create_or_open_wallet_for_user(user.id)
     address = bitcoin_tools.get_wallet_address(wallet)
-    await msg.reply(replies.DEPOSIT, reply=False)
-    await msg.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
+    await query.message.reply(replies.DEPOSIT, reply=False)
+    await query.message.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
+    await query.answer()
 
 
 # Adding item part
@@ -102,69 +105,75 @@ async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args
 
 
 # Buying item part
-@dp.message_handler(state='*', commands=['buy_item'])
-async def buy_item(msg: types.Message, *args, **kwargs):
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    async for item in sync_to_async_iterable(Item.objects.all()):
-        keyboard.add(item.name)
-    await msg.reply(replies.BUY_ASK_ITEM_NAME, reply=False, reply_markup=keyboard)
-    await states.BuyingItemStates.waiting_for_item.set()
+@dp.callback_query_handler(lambda query: query.data == 'buy_item', state='*')
+async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+    item = await sync_to_async(Item.objects.first)()
+    await query.message.reply(replies.ITEM_DESCRIPTION.format(name=item.name, description=item.description,
+                                                              price=item.price),
+                              reply=False, reply_markup=keyboards.shop_keyboard)
+    await state.update_data(item_id=item.id)
+    await query.answer()
 
 
-@dp.message_handler(state=states.BuyingItemStates.waiting_for_item, content_types=types.ContentTypes.TEXT)
-async def confirm_buy_item(msg: types.Message, state: FSMContext, *args, **kwargs):
-    if item := await sync_to_async(Item.objects.get)(name=msg.text):
-        await msg.reply(replies.BUY_ITEM_CONFIRMATION.format(name=item.name, price=item.price),
-                        reply=False, reply_markup=keyboards.yes_or_no)
-        await state.update_data(item_id=item.id)
-        await states.BuyingItemStates.waiting_for_confirmation.set()
-    else:
-        await msg.reply(replies.BUY_ITEM_NOT_FOUND.format(name=msg.text),
-                        reply=False, reply_markup=ReplyKeyboardRemove())
+@dp.callback_query_handler(lambda query: query.data == 'previous' or query.data == 'next', state='*')
+async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+    current_item_id = (await state.get_data()).get('item_id')
+    try:
+        item = await sync_to_async(Item.objects.get)(
+            id=current_item_id - 1 if query.data == 'previous' else current_item_id + 1)
+    except Item.DoesNotExist:
+        await query.answer('Reached the end of list')
+        return
+    await query.message.edit_text(replies.ITEM_DESCRIPTION.format(name=item.name,
+                                                                  description=item.description,
+                                                                  price=item.price),
+                                  reply_markup=keyboards.shop_keyboard)
+    await state.update_data(item_id=item.id)
+    await query.answer()
 
 
-@dp.message_handler(state=states.BuyingItemStates.waiting_for_confirmation, content_types=types.ContentTypes.TEXT)
-async def add_item_to_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
-    if msg.text.lower() == replies.YES.lower():
-        user_data = await state.get_data()
-        await state.update_data(cart=[*user_data.pop('cart', []), user_data.pop('item_id')], **user_data)
-        await msg.reply(replies.BUY_ITEM_SUCCESS, reply=False, reply_markup=ReplyKeyboardRemove())
-        await state.reset_state(with_data=False)
-    else:
-        await state.reset_state(with_data=False)
-        await msg.reply(replies.BUY_ITEM_ABORTED, reply=False, reply_markup=ReplyKeyboardRemove())
+@dp.callback_query_handler(lambda query: query.data == 'add_to_cart', state='*')
+async def add_to_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+    user_data = await state.get_data()
+    await state.update_data(cart=[*user_data.pop('cart', []), user_data.pop('item_id')], **user_data)
+    await query.answer(replies.BUY_ITEM_SUCCESS)
 
 
 # Cart part
-@dp.message_handler(state='*', commands=['cart'])
-async def get_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
+@dp.callback_query_handler(lambda query: query.data == 'cart', state='*')
+async def get_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
+    if not cart:
+        await query.answer(replies.CART_IS_EMPTY)
+        return
     message = f'{replies.CART_REVIEW.format(n=len(cart))}\n\n'
     for n, item_id in enumerate(cart):
         item: Item = await sync_to_async(Item.objects.get)(id=item_id)
         message += f'{replies.CARD_ITEM.format(n=n + 1, name=item.name, price=item.price)}\n'
     if message:
-        await msg.reply(message, reply=False)
-    await msg.reply(replies.EMPTY_CART_OR_CHECKOUT, reply=False, reply_markup=ReplyKeyboardRemove())
+        await query.message.reply(message, reply=False, reply_markup=keyboards.cart_keyboard)
+    await query.answer()
 
 
-@dp.message_handler(state='*', commands=['empty_cart'])
-async def empty_cart(msg: types.Message, state: FSMContext, *args, **kwargs):
+@dp.callback_query_handler(lambda query: query.data == 'empty_cart', state='*')
+async def empty_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     await state.update_data(cart=[])
-    await msg.reply(replies.EMPTY_CART_SUCCESS, reply=False, reply_markup=ReplyKeyboardRemove())
+    await query.answer(replies.EMPTY_CART_SUCCESS)
 
 
 # Checkout part
-@dp.message_handler(state='*', commands=['checkout'])
-async def checkout(msg: types.Message, state: FSMContext, *args, **kwargs):
+@dp.callback_query_handler(lambda query: query.data == 'checkout', state='*')
+async def checkout(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
     if not cart:
-        await msg.reply(replies.CART_IS_EMPTY, reply=False, reply_markup=ReplyKeyboardRemove())
+        await query.message.reply(replies.CART_IS_EMPTY, reply=False, reply_markup=ReplyKeyboardRemove())
+        await query.answer()
         return
-    await msg.reply(replies.ASK_FOR_ADDRESS, reply=False, reply_markup=ReplyKeyboardRemove())
+    await query.message.reply(replies.ASK_FOR_ADDRESS, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.CheckoutStates.waiting_for_address.set()
+    await query.answer()
 
 
 @dp.message_handler(state=states.CheckoutStates.waiting_for_address, content_types=types.ContentTypes.TEXT)
@@ -241,6 +250,7 @@ async def complete_order(query: types.CallbackQuery):
     order.date_completed = timezone.now()
     await sync_to_async(order.save)()
     await query.bot.send_message(query.from_user.id, replies.ORDER_COMPLETED.format(order_id=order.id))
+    await query.answer()
 
     # Notify user
     user = await sync_to_async(User.objects.get)(id=order.user_id)
@@ -248,21 +258,23 @@ async def complete_order(query: types.CallbackQuery):
 
 
 # Referral part
-@dp.message_handler(state='*', commands=['referral'])
-async def referral(msg: types.Message, *args, **kwargs):
-    link = f'https://t.me/{(await bot.get_me()).username}?start={msg.from_user.id}'
+@dp.callback_query_handler(lambda query: query.data == 'referral', state='*')
+async def referral(query: types.CallbackQuery, *args, **kwargs):
+    link = f'https://t.me/{(await bot.get_me()).username}?start={query.from_user.id}'
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton(text='Share with friend!',
                                     url=f'https://t.me/share/url?url={link}&'
                                         f'text={quote("Check this bot out!")}'))
-    await msg.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=markup)
+    await query.message.reply(replies.REFERRAL_LINK.format(link=link), reply=False, reply_markup=markup)
+    await query.answer()
 
 
 # Support part
-@dp.message_handler(state='*', commands=['support'])
-async def support(msg: types.Message, *args, **kwargs):
-    await msg.reply(replies.SUPPORT_MESSAGE, reply=False, reply_markup=ReplyKeyboardRemove())
+@dp.callback_query_handler(lambda query: query.data == 'support', state='*')
+async def support(query: types.CallbackQuery, *args, **kwargs):
+    await query.message.reply(replies.SUPPORT_MESSAGE, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.SupportStates.waiting_for_ticket.set()
+    await query.answer()
 
 
 @dp.message_handler(state=states.SupportStates.waiting_for_ticket, content_types=types.ContentTypes.TEXT)
