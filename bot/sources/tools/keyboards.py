@@ -6,11 +6,11 @@ yes_or_no = ReplyKeyboardMarkup(resize_keyboard=True)
 yes_or_no.add(replies.YES, replies.NO)
 
 start_keyboard = InlineKeyboardMarkup()
-start_keyboard.add(InlineKeyboardButton(text='Add funds', callback_data='deposit'),
-                   InlineKeyboardButton(text='Shop', callback_data='buy_item'))
-start_keyboard.add(InlineKeyboardButton(text='Cart', callback_data='cart'),
-                   InlineKeyboardButton(text='Referral', callback_data='referral'))
-start_keyboard.add(InlineKeyboardButton(text='Support', callback_data='support'))
+# Callback data unhandled: deposit, cart
+start_keyboard.add(InlineKeyboardButton(text='Shop', callback_data='buy_item'),
+                   InlineKeyboardButton(text='Referrals', callback_data='referral'))
+start_keyboard.add(InlineKeyboardButton(text='Shipping', callback_data='shipping_policy'),
+                   InlineKeyboardButton(text='Support', callback_data='support'))
 
 shop_keyboard = InlineKeyboardMarkup()
 shop_keyboard.add(InlineKeyboardButton(text='Previous', callback_data='previous'),

@@ -13,6 +13,7 @@ NO = 'No'
 ASK_ITEM_NAME = 'What\'s the name of the item?'
 ASK_ITEM_DESCRIPTION = 'What\'s the description?'
 ASK_ITEM_PRICE = 'What\'s the price? (provide the price in smallest units, for example, satoshi) '
+ASK_ITEM_PHOTO = 'Please send the photo'
 ASK_ITEM_CONFIRMATION = 'You\'re adding an item with name {name}, description {description} and price {price}. Proceed?'
 
 ADD_ITEM_ABORTED = 'Adding cancelled. You can start again using command /add_item'
@@ -60,3 +61,8 @@ NOTIFY_MANAGER_NEW_TICKET = 'New support ticket! User {first_name} {last_name} {
                             'Send a reply to this message and it will be forwarded to the user.'
 TICKET_RESOLVED = 'Your ticket was resolver. Reply from our manager:\n\n' \
                   '{text}\n\n'
+
+# Shipping policy part
+SHIPPING_POLICY = '{text}\n\nLast updated:{updated}'
+ASK_NEW_POLICY = 'Send me new shipping policy.'
+SHIPPING_POLICY_CHANGED = 'Shipping policy updated'

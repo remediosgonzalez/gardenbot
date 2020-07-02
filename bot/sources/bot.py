@@ -4,7 +4,8 @@ from urllib.parse import quote
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
+    InputMediaPhoto
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -13,7 +14,7 @@ from accounts.models import Account
 from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tools, keyboards, states
 from bot.sources.tools.django_tools import sync_to_async
 from bot.sources.tools.redis_storage import redis_storage
-from shop.models import Item, Order, OrderItem
+from shop.models import Item, Order, OrderItem, ShippingPolicy
 from support.models import SupportTicket
 from users import models
 
@@ -86,6 +87,14 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 @dp.message_handler(state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(price=msg.text)
+    await msg.reply(replies.ASK_ITEM_PHOTO, reply=False,
+                    reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add('Skip'))
+    await states.AddingItemStates.waiting_for_photo.set()
+
+
+@dp.message_handler(state=states.AddingItemStates.waiting_for_photo, content_types=types.ContentTypes.PHOTO)
+async def add_item_photo(msg: types.Message, state: FSMContext, *args, **kwargs):
+    await state.update_data(photo_file_id=msg.photo[0].file_id)
     item_data = await state.get_data()
     await msg.reply(replies.ASK_ITEM_CONFIRMATION.format(**item_data), reply=False, reply_markup=keyboards.yes_or_no)
     await states.AddingItemStates.waiting_for_confirmation.set()
@@ -97,7 +106,11 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
     if msg.text.lower() == replies.YES.lower():
         item_data = await state.get_data()
-        await sync_to_async(Item.objects.create)(**item_data, created_by_user=user)
+        await sync_to_async(Item.objects.create)(name=item_data.get('name'),
+                                                 description=item_data.get('description'),
+                                                 price=item_data.get('price'),
+                                                 photo_file_id=item_data.get('photo_file_id'),
+                                                 created_by_user=user)
         await msg.reply(replies.ADD_ITEM_SUCCESS, reply=False, reply_markup=ReplyKeyboardRemove())
     else:
         await msg.reply(replies.ADD_ITEM_ABORTED, reply=False, reply_markup=ReplyKeyboardRemove())
@@ -108,9 +121,13 @@ async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args
 @dp.callback_query_handler(lambda query: query.data == 'buy_item', state='*')
 async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     item = await sync_to_async(Item.objects.first)()
-    await query.message.reply(replies.ITEM_DESCRIPTION.format(name=item.name, description=item.description,
-                                                              price=item.price),
-                              reply=False, reply_markup=keyboards.shop_keyboard)
+    message = replies.ITEM_DESCRIPTION.format(name=item.name, description=item.description,
+                                              price=item.price)
+    if item.photo_file_id:
+        await query.message.reply_photo(item.photo_file_id, message,
+                                        reply_markup=keyboards.shop_keyboard, reply=False)
+    else:
+        await query.message.reply(message, reply=False, reply_markup=keyboards.shop_keyboard)
     await state.update_data(item_id=item.id)
     await query.answer()
 
@@ -124,10 +141,11 @@ async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **k
     except Item.DoesNotExist:
         await query.answer('Reached the end of list')
         return
-    await query.message.edit_text(replies.ITEM_DESCRIPTION.format(name=item.name,
-                                                                  description=item.description,
-                                                                  price=item.price),
-                                  reply_markup=keyboards.shop_keyboard)
+    await query.message.edit_media(InputMediaPhoto(item.photo_file_id,
+                                                   caption=replies.ITEM_DESCRIPTION.format(name=item.name,
+                                                                                           description=item.description,
+                                                                                           price=item.price)),
+                                   reply_markup=keyboards.shop_keyboard)
     await state.update_data(item_id=item.id)
     await query.answer()
 
@@ -320,6 +338,34 @@ async def reply_to_ticket(msg: types.Message, *args, **kwargs):
     await msg.bot.send_message(ticket.from_user_id,
                                replies.TICKET_RESOLVED.format(text=msg.text),
                                reply_to_message_id=ticket.user_message_id)
+
+
+# Shipping policy part
+@dp.callback_query_handler(lambda query: query.data == 'shipping_policy', state='*')
+async def shipping_policy(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+    policy: ShippingPolicy = await sync_to_async(ShippingPolicy.objects.get)(id=1)
+    await query.message.reply(replies.SHIPPING_POLICY.format(text=policy.text, updated=policy.updated),
+                              reply=False, reply_markup=ReplyKeyboardRemove())
+    await query.answer()
+
+
+@dp.message_handler(state='*', commands=['change_policy'])
+@django_tools.auth_user_decorator
+@django_tools.staff_account_required
+async def change_policy(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
+    await msg.reply(replies.ASK_NEW_POLICY, reply=False, reply_markup=ReplyKeyboardMarkup())
+    await states.ShippingPolicyChangeStates.waiting_for_new_policy.set()
+
+
+@dp.message_handler(state=states.ShippingPolicyChangeStates.waiting_for_new_policy,
+                    content_types=types.ContentTypes.TEXT)
+async def set_policy(msg: types.Message, state: FSMContext, *args, **kwargs):
+    policy: ShippingPolicy = await sync_to_async(ShippingPolicy.objects.get)(id=1)
+    policy.text = msg.text
+    policy.updated = timezone.now()
+    await sync_to_async(policy.save)()
+    await msg.reply(replies.SHIPPING_POLICY_CHANGED, reply=False, reply_markup=ReplyKeyboardRemove())
+    await state.reset_state(with_data=False)
 
 
 async def startup(dispatcher: Dispatcher):
