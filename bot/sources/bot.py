@@ -344,7 +344,7 @@ async def reply_to_ticket(msg: types.Message, *args, **kwargs):
 @dp.callback_query_handler(lambda query: query.data == 'shipping_policy', state='*')
 async def shipping_policy(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     policy: ShippingPolicy = await sync_to_async(ShippingPolicy.objects.get)(id=1)
-    await query.message.reply(replies.SHIPPING_POLICY.format(text=policy.text, updated=policy.updated),
+    await query.message.reply(replies.SHIPPING_POLICY.format(text=policy.text, updated=policy.updated.date()),
                               reply=False, reply_markup=ReplyKeyboardRemove())
     await query.answer()
 
