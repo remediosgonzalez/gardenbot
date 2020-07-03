@@ -383,7 +383,7 @@ async def delete_item(msg: types.Message, user: User, state: FSMContext, *args, 
     user_data = await state.get_data()
     item = await sync_to_async(Item.objects.get)(id=user_data.get('item_id'))
     item.disabled = True
-    await sync_to_async(item.save)
+    await sync_to_async(item.save)()
     await msg.reply(replies.ITEM_DELETED, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
