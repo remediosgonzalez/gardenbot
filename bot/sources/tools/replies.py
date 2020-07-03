@@ -66,3 +66,6 @@ TICKET_RESOLVED = 'Your ticket was resolver. Reply from our manager:\n\n' \
 SHIPPING_POLICY = '{text}\n\nLast updated: {updated}'
 ASK_NEW_POLICY = 'Send me new shipping policy.'
 SHIPPING_POLICY_CHANGED = 'Shipping policy updated'
+
+# Deleting item part
+ITEM_DELETED = 'Item deleted.'

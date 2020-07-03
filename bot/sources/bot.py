@@ -87,8 +87,7 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 @dp.message_handler(state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(price=msg.text)
-    await msg.reply(replies.ASK_ITEM_PHOTO, reply=False,
-                    reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add('Skip'))
+    await msg.reply(replies.ASK_ITEM_PHOTO, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_photo.set()
 
 
@@ -135,12 +134,22 @@ async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
 @dp.callback_query_handler(lambda query: query.data == 'previous' or query.data == 'next', state='*')
 async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     current_item_id = (await state.get_data()).get('item_id')
-    try:
-        item = await sync_to_async(Item.objects.get)(
-            id=current_item_id - 1 if query.data == 'previous' else current_item_id + 1)
-    except Item.DoesNotExist:
-        await query.answer('Reached the end of list')
-        return
+    new_item_id = current_item_id - 1 if query.data == 'previous' else current_item_id + 1
+    first_item = await sync_to_async(Item.objects.first)()
+    last_item = await sync_to_async(Item.objects.last)()
+    while True:
+        try:
+            item = await sync_to_async(Item.objects.get)(id=new_item_id)
+        except Item.DoesNotExist:
+            if (new_item_id < first_item.id and query.data == 'previous') or \
+                    (new_item_id > last_item.id and query.data == 'next'):
+                await query.answer('Reached the end of list')
+                return
+            new_item_id = new_item_id - 1 if query.data == 'previous' else new_item_id + 1
+            continue
+        if not item.disabled:
+            break
+
     await query.message.edit_media(InputMediaPhoto(item.photo_file_id,
                                                    caption=replies.ITEM_DESCRIPTION.format(name=item.name,
                                                                                            description=item.description,
@@ -366,6 +375,18 @@ async def set_policy(msg: types.Message, state: FSMContext, *args, **kwargs):
     await sync_to_async(policy.save)()
     await msg.reply(replies.SHIPPING_POLICY_CHANGED, reply=False, reply_markup=ReplyKeyboardRemove())
     await state.reset_state(with_data=False)
+
+
+# Deleting item part
+@dp.message_handler(state='*', commands=['delete_item'])
+@django_tools.auth_user_decorator
+@django_tools.staff_account_required
+async def delete_item(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
+    user_data = await state.get_data()
+    item = await sync_to_async(Item.objects.get)(id=user_data.get('item_id'))
+    item.disabled = True
+    await sync_to_async(item.save)
+    await msg.reply(replies.ITEM_DELETED, reply=False, reply_markup=ReplyKeyboardRemove())
 
 
 async def startup(dispatcher: Dispatcher):
