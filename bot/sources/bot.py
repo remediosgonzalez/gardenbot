@@ -261,7 +261,7 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
         await msg.bot.send_message(configs.TG_MANAGER_ID, message, reply_markup=markup)
 
     else:
-        await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False, reply_markup=ReplyKeyboardRemove())
+        await msg.reply(replies.NOT_SUFFICIENT_FUNDS, reply=False, reply_markup=keyboards.not_sufficient_funds_keyboard)
         await state.reset_state(with_data=False)
 
 

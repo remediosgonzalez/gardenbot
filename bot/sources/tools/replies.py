@@ -2,7 +2,8 @@ HELLO = 'Hello! Here is the basic bot that accepts payments in bitcoin. Currentl
 
 # Deposit part
 GENERATING_ADDRESS = 'Generation a new address for you. It may take some time.'
-DEPOSIT = 'Done. Send some funds to this address:'
+DEPOSIT = 'Done. Send some funds to the address sent below.' \
+          'You will get a notification within an hour after the payment is made.'
 FUNDS_ADDED = '{balance} added to your account'
 NOT_AUTHENTICATED = 'Sorry, you are not allowed to do that.'
 
@@ -36,7 +37,7 @@ ASK_FOR_ADDRESS = 'Please, provide your address.'
 ADDRESS_SET_ASK_PAYMENT_CONFIRM = 'Address set. You are paying {total_price} for {n} items. ' \
                                   'Your balance is {balance}. Proceed?'
 ORDER_SUCCESS = 'Your order ID is {id}. You will get a notify when it\'s delivered.'
-NOT_SUFFICIENT_FUNDS = 'Not sufficient funds. Go to /start and add some.'
+NOT_SUFFICIENT_FUNDS = 'Not sufficient funds.'
 ORDER_DELIVERED = 'Your order (ID: {order_id}) is delivered. Have a nice day!'
 
 # Referral part
