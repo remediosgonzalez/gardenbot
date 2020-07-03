@@ -31,7 +31,7 @@ dp.middleware.setup(LoggingMiddleware())
 
 
 @dp.message_handler(state='*', commands=['start'])
-async def start(msg: types.Message, *args, **kwargs):
+async def start(msg: types.Message, state:FSMContext, *args, **kwargs):
     user, is_new = await django_tools.get_or_create_user(msg.from_user, return_tuple=True)
     user: User
     if msg.get_args().isdigit():
@@ -46,6 +46,7 @@ async def start(msg: types.Message, *args, **kwargs):
                                            first_name=msg.from_user.first_name,
                                            last_name=msg.from_user.last_name,
                                        ))
+    await state.reset_state(with_data=False)
     await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False,
                     reply_markup=keyboards.start_keyboard)
 
