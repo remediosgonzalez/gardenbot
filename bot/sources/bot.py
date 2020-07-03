@@ -140,8 +140,8 @@ async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **k
         current_item_id = current_item_id - 1 if query.data == 'previous' else current_item_id + 1
         try:
             item = await sync_to_async(Item.objects.get)(id=current_item_id)
-            if item.disabled:
-                continue
+            if not item.disabled:
+                break
         except Item.DoesNotExist:
             if (current_item_id < first_item.id and query.data == 'previous') or \
                     (current_item_id > last_item.id and query.data == 'next'):
