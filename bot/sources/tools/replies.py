@@ -24,6 +24,7 @@ ADD_ITEM_SUCCESS = 'Item added.'
 ITEM_DESCRIPTION = 'Name: {name}\n\n' \
                    'Description: {description}\n\n' \
                    'Price: {price}'
+NO_ITEMS_IN_SHOP = 'There is no items in the shop yet.'
 BUY_ITEM_SUCCESS = 'Item added to your cart'
 
 # Cart part

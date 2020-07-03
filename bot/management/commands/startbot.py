@@ -15,6 +15,6 @@ class Command(BaseCommand):
                             )
 
     def handle(self, *args, **options):
-        from bot.sources.bot import dp, startup, shutdown
+        from bot.sources.bot import dp
 
-        executor.start_polling(dp, on_startup=startup, on_shutdown=shutdown)
+        executor.start_polling(dp)

@@ -70,28 +70,32 @@ async def add_item(msg: types.Message, user: User, *args, **kwargs):
     await states.AddingItemStates.waiting_for_name.set()
 
 
-@dp.message_handler(state=states.AddingItemStates.waiting_for_name, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingItemStates.waiting_for_name, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(name=msg.text)
     await msg.reply(replies.ASK_ITEM_DESCRIPTION, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_description.set()
 
 
-@dp.message_handler(state=states.AddingItemStates.waiting_for_description, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingItemStates.waiting_for_description, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(description=msg.text)
     await msg.reply(replies.ASK_ITEM_PRICE, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_price.set()
 
 
-@dp.message_handler(state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(price=msg.text)
     await msg.reply(replies.ASK_ITEM_PHOTO, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_photo.set()
 
 
-@dp.message_handler(state=states.AddingItemStates.waiting_for_photo, content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingItemStates.waiting_for_photo, content_types=types.ContentTypes.PHOTO)
 async def add_item_photo(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(photo_file_id=msg.photo[0].file_id)
     item_data = await state.get_data()
@@ -99,7 +103,8 @@ async def add_item_photo(msg: types.Message, state: FSMContext, *args, **kwargs)
     await states.AddingItemStates.waiting_for_confirmation.set()
 
 
-@dp.message_handler(state=states.AddingItemStates.waiting_for_confirmation, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingItemStates.waiting_for_confirmation, content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 @django_tools.staff_account_required
 async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
@@ -120,6 +125,9 @@ async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args
 @dp.callback_query_handler(lambda query: query.data == 'buy_item', state='*')
 async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     item = await sync_to_async(Item.objects.first)()
+    if not item:
+        await query.answer(replies.NO_ITEMS_IN_SHOP)
+        return
     message = replies.ITEM_DESCRIPTION.format(name=item.name, description=item.description,
                                               price=item.price)
     if item.photo_file_id:
@@ -201,7 +209,8 @@ async def checkout(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
     await query.answer()
 
 
-@dp.message_handler(state=states.CheckoutStates.waiting_for_address, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.CheckoutStates.waiting_for_address, content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 async def set_address(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
@@ -220,7 +229,8 @@ async def set_address(msg: types.Message, user: User, state: FSMContext, *args, 
     await states.CheckoutStates.waiting_for_payment_confirmation.set()
 
 
-@dp.message_handler(state=states.CheckoutStates.waiting_for_payment_confirmation, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.CheckoutStates.waiting_for_payment_confirmation, content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 async def make_order(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
@@ -265,7 +275,7 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
         await state.reset_state(with_data=False)
 
 
-@dp.callback_query_handler(lambda query: query.data.startswith('complete-order-'))
+@dp.callback_query_handler(lambda query: query.data.startswith('complete-order-'), state='*')
 async def complete_order(query: types.CallbackQuery):
     data = query.data
     order_id = data[len('complete-order-'):]
@@ -302,7 +312,8 @@ async def support(query: types.CallbackQuery, *args, **kwargs):
     await query.answer()
 
 
-@dp.message_handler(state=states.SupportStates.waiting_for_ticket, content_types=types.ContentTypes.TEXT)
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.SupportStates.waiting_for_ticket, content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 async def create_support_ticket(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
     ticket: SupportTicket = await sync_to_async(SupportTicket.objects.create)(from_user=user,
@@ -328,7 +339,7 @@ async def create_support_ticket(msg: types.Message, user: User, state: FSMContex
 
 @dp.message_handler(lambda msg: msg.from_user.id == configs.TG_MANAGER_ID,
                     lambda msg: bool(msg.reply_to_message),
-                    content_types=types.ContentTypes.TEXT)
+                    content_types=types.ContentTypes.TEXT, state='*')
 async def reply_to_ticket(msg: types.Message, *args, **kwargs):
     try:
         ticket: SupportTicket = await sync_to_async(SupportTicket.objects.get)(
@@ -364,7 +375,8 @@ async def change_policy(msg: types.Message, user: User, state: FSMContext, *args
     await states.ShippingPolicyChangeStates.waiting_for_new_policy.set()
 
 
-@dp.message_handler(state=states.ShippingPolicyChangeStates.waiting_for_new_policy,
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.ShippingPolicyChangeStates.waiting_for_new_policy,
                     content_types=types.ContentTypes.TEXT)
 async def set_policy(msg: types.Message, state: FSMContext, *args, **kwargs):
     policy: ShippingPolicy = await sync_to_async(ShippingPolicy.objects.get)(id=1)
