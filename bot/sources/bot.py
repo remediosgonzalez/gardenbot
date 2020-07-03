@@ -134,21 +134,19 @@ async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
 @dp.callback_query_handler(lambda query: query.data == 'previous' or query.data == 'next', state='*')
 async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
     current_item_id = (await state.get_data()).get('item_id')
-    new_item_id = current_item_id - 1 if query.data == 'previous' else current_item_id + 1
     first_item = await sync_to_async(Item.objects.first)()
     last_item = await sync_to_async(Item.objects.last)()
     while True:
+        current_item_id = current_item_id - 1 if query.data == 'previous' else current_item_id + 1
         try:
-            item = await sync_to_async(Item.objects.get)(id=new_item_id)
+            item = await sync_to_async(Item.objects.get)(id=current_item_id)
+            if item.disabled:
+                continue
         except Item.DoesNotExist:
-            if (new_item_id < first_item.id and query.data == 'previous') or \
-                    (new_item_id > last_item.id and query.data == 'next'):
+            if (current_item_id < first_item.id and query.data == 'previous') or \
+                    (current_item_id > last_item.id and query.data == 'next'):
                 await query.answer('Reached the end of list')
                 return
-            new_item_id = new_item_id - 1 if query.data == 'previous' else new_item_id + 1
-            continue
-        if not item.disabled:
-            break
 
     await query.message.edit_media(InputMediaPhoto(item.photo_file_id,
                                                    caption=replies.ITEM_DESCRIPTION.format(name=item.name,
