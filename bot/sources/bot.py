@@ -125,7 +125,7 @@ async def add_item_name(msg: types.Message, user: User, state: FSMContext, *args
 # Buying item part
 @dp.callback_query_handler(lambda query: query.data == 'buy_item', state='*')
 async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
-    item = await sync_to_async(Item.objects.first)()
+    item = await sync_to_async((await sync_to_async(Item.objects.filter)(disabled=False)).first)()
     if not item:
         await query.answer(replies.NO_ITEMS_IN_SHOP)
         return
