@@ -337,7 +337,7 @@ async def create_support_ticket(msg: types.Message, user: User, state: FSMContex
     await sync_to_async(ticket.save)()
 
 
-@dp.message_handler(lambda msg: msg.from_user.id == configs.TG_MANAGER_ID,
+@dp.message_handler(lambda msg: msg.from_user.id == int(configs.TG_MANAGER_ID),
                     lambda msg: bool(msg.reply_to_message),
                     content_types=types.ContentTypes.TEXT, state='*')
 async def reply_to_ticket(msg: types.Message, *args, **kwargs):
