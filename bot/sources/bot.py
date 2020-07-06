@@ -95,8 +95,7 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     await states.AddingItemStates.waiting_for_photo.set()
 
 
-@dp.message_handler(lambda msg: not msg.text.startswith('/'),
-                    state=states.AddingItemStates.waiting_for_photo, content_types=types.ContentTypes.PHOTO)
+@dp.message_handler(state=states.AddingItemStates.waiting_for_photo, content_types=types.ContentTypes.PHOTO)
 async def add_item_photo(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(photo_file_id=msg.photo[0].file_id)
     item_data = await state.get_data()
