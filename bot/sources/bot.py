@@ -92,6 +92,7 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
     if not msg.text.isdigit():
         await msg.reply('Please send a digit', reply=False)
+        return
     await state.update_data(price=msg.text)
     await msg.reply(replies.ASK_ITEM_PHOTO, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_photo.set()
