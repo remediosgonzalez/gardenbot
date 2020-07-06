@@ -2,6 +2,7 @@ import logging
 from urllib.parse import quote
 
 from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
@@ -13,7 +14,6 @@ import configs
 from accounts.models import Account
 from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tools, keyboards, states
 from bot.sources.tools.django_tools import sync_to_async
-from bot.sources.tools.redis_storage import redis_storage
 from shop.models import Item, Order, OrderItem, ShippingPolicy
 from support.models import SupportTicket
 from users import models
@@ -26,7 +26,7 @@ logging_tools.setup()
 
 bot = Bot(configs.BOT_TOKEN)
 
-dp = Dispatcher(bot, storage=redis_storage)
+dp = Dispatcher(bot, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
 
@@ -90,6 +90,8 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 @dp.message_handler(lambda msg: not msg.text.startswith('/'),
                     state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
+    if not msg.text.isdigit():
+        await msg.reply('Please send a digit', reply=False)
     await state.update_data(price=msg.text)
     await msg.reply(replies.ASK_ITEM_PHOTO, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_photo.set()
