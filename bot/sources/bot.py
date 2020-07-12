@@ -2,7 +2,6 @@ import logging
 from urllib.parse import quote
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
@@ -14,6 +13,7 @@ import configs
 from accounts.models import Account
 from bot.sources.tools import replies, django_tools, bitcoin_tools, logging_tools, keyboards, states
 from bot.sources.tools.django_tools import sync_to_async
+from bot.sources.tools.redis_storage import redis_storage
 from shop.models import Item, Order, OrderItem, ShippingPolicy
 from support.models import SupportTicket
 from users import models
@@ -26,7 +26,7 @@ logging_tools.setup()
 
 bot = Bot(configs.BOT_TOKEN)
 
-dp = Dispatcher(bot, storage=MemoryStorage())
+dp = Dispatcher(bot, storage=redis_storage)
 dp.middleware.setup(LoggingMiddleware())
 
 
