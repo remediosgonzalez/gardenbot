@@ -18,7 +18,7 @@ hiredis==1.0.1
 idna==2.10
 multidict==4.7.6
 mysql-connector==2.2.9
-mysqlclient==1.4.6
+mysqlclient==2.0.1
 psycopg2==2.8.5
 pyaes==1.6.1
 pytz==2020.1
