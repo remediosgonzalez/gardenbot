@@ -28,7 +28,7 @@ idna==2.10
 incremental==17.5.0
 multidict==4.7.6
 mysql-connector==2.2.9
-mysqlclient==1.4.6
+mysqlclient==2.0.1
 psycopg2==2.8.5
 pyaes==1.6.1
 pyasn1==0.4.8
