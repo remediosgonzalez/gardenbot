@@ -5,6 +5,7 @@ HELLO = 'Hello! Welcome to Garden Club, the most convenient bot to purchase cann
 GENERATING_ADDRESS = 'Generating a new address for you. It may take some time.'
 DEPOSIT = 'Done. Send some funds to the address sent below.' \
           'You will get a notification within an hour after the payment is made.'
+BALANCE = 'Your balance is {balance} BTC.'
 FUNDS_ADDED = '{balance} added to your account'
 NOT_AUTHENTICATED = 'Sorry, you are not allowed to do that.'
 

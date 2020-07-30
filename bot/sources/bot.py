@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
-    InputMediaPhoto
+    InputMediaPhoto, ChatActions
 from aiogram.utils.emoji import emojize
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -65,10 +65,19 @@ async def start_(query: types.CallbackQuery, state: FSMContext):
 async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
     await query.message.reply(replies.GENERATING_ADDRESS, reply=False)
     await query.answer()
+    await ChatActions.typing()
     wallet = bitcoin_tools.create_or_open_wallet_for_user(user.id)
     address = bitcoin_tools.get_wallet_address(wallet)
     await query.message.reply(replies.DEPOSIT, reply=False)
     await query.message.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
+
+
+@dp.callback_query_handler(lambda query: query.data == 'balance', state='*')
+@django_tools.auth_user_decorator
+async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
+    account = await sync_to_async(Account.objects.get)(user=user)
+    await query.message.reply(replies.BALANCE.format(balance=(account.balance / 100_000_000)), reply=False)
+    await query.answer()
 
 
 # Adding item part

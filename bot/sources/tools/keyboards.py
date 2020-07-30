@@ -10,7 +10,8 @@ start_keyboard.add(InlineKeyboardButton(text='Seeds Shop', callback_data='buy_it
                    InlineKeyboardButton(text='Referrals', callback_data='referral'))
 start_keyboard.add(InlineKeyboardButton(text='Shipping', callback_data='shipping_policy'),
                    InlineKeyboardButton(text='Support', callback_data='support'))
-start_keyboard.add(InlineKeyboardButton(text='Add funds', callback_data='deposit'))
+start_keyboard.add(InlineKeyboardButton(text='Add funds', callback_data='deposit'),
+                   InlineKeyboardButton(text='Check balance', callback_data='balance'))
 
 shop_keyboard = InlineKeyboardMarkup()
 shop_keyboard.add(InlineKeyboardButton(text='Previous', callback_data='previous'),

@@ -3,6 +3,7 @@ from functools import wraps
 from typing import *
 
 from aiogram import types as aiogram_types
+from aiogram.types import ChatActions
 from asgiref.sync import sync_to_async as _sync_to_async
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
@@ -84,6 +85,7 @@ def user_get_if_exists(user_id: Union[int, str]) -> Union[User, NoReturn]:
 
 def auth_user_decorator(func):
     async def wrapper(msg: aiogram_types.Message, *args, **kwargs):
+        await ChatActions.typing()
         user = await sync_to_async(User.objects.get)(id=msg.from_user.id)
         return await func(msg, user, *args, **kwargs)
     return wrapper
