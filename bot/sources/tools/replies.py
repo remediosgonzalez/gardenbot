@@ -1,4 +1,5 @@
-HELLO = 'Hello! Here is the basic bot that accepts payments in bitcoin. Currently using `{network_name}`'
+HELLO = 'Hello! Welcome to Garden Club, the most convenient bot to purchase cannabis products with Bitcoin. ' \
+        'New products coming soon! :seedling:'
 
 # Deposit part
 GENERATING_ADDRESS = 'Generating a new address for you. It may take some time.'

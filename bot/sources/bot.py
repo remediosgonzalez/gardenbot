@@ -6,6 +6,7 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
     InputMediaPhoto
+from aiogram.utils.emoji import emojize
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -47,8 +48,16 @@ async def start(msg: types.Message, state: FSMContext, *args, **kwargs):
                                            last_name=msg.from_user.last_name,
                                        ))
     await state.reset_state(with_data=False)
-    await msg.reply(replies.HELLO.format(network_name=configs.NETWORK), reply=False,
+    await msg.reply(emojize(replies.HELLO), reply=False,
                     reply_markup=keyboards.start_keyboard)
+
+
+@dp.callback_query_handler(lambda query: query.data == 'start', state='*')
+async def start_(query: types.CallbackQuery, state: FSMContext):
+    await state.reset_state(with_data=False)
+    await query.message.reply(emojize(replies.HELLO), reply=False,
+                              reply_markup=keyboards.start_keyboard)
+    await query.answer()
 
 
 @dp.callback_query_handler(lambda query: query.data == 'deposit', state='*')
