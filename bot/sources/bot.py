@@ -68,6 +68,8 @@ async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
     await ChatActions.typing()
     wallet = bitcoin_tools.create_or_open_wallet_for_user(user.id)
     address = bitcoin_tools.get_wallet_address(wallet)
+    # noinspection PyProtectedMember
+    wallet._session.close()
     await query.message.reply(replies.DEPOSIT, reply=False)
     await query.message.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
 

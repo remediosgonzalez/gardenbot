@@ -79,6 +79,7 @@ class Command(BaseCommand):
                     log.info(f'User {user.id} has zero balance.')
             else:
                 log.error(f'Wallet has network {wallet.network.name} when current network is {configs.NETWORK}')
+            # noinspection PyProtectedMember
             wallet._session.close()
         log.info('Script ended.')
 
