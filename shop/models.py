@@ -7,7 +7,7 @@ User = get_user_model()
 class Item(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(null=True)
-    price = models.IntegerField(null=True)
+    price = models.BigIntegerField(null=True)
     photo_file_id = models.TextField(null=True)
 
     disabled = models.BooleanField(default=False)
