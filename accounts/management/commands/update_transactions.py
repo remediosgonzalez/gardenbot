@@ -36,7 +36,7 @@ class Command(BaseCommand):
 
         for user in users:
             log.info(f'Getting wallet for user {user.id}')
-            wallet = bitcoinlib.wallets.wallet_create_or_open(f'wallet-{user.id}', db_uri=configs.JAWSDB_URL)
+            wallet = bitcoinlib.wallets.wallet_create_or_open(f'{configs.NETWORK}-wallet-{user.id}', db_uri=configs.JAWSDB_URL)
             log.info('Success.')
             if wallet.network.name == configs.NETWORK:
                 log.info('Checking the wallet\'s balance...')
