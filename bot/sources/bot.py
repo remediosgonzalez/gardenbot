@@ -59,7 +59,6 @@ async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
     address = bitcoin_tools.get_wallet_address(wallet)
     await query.message.reply(replies.DEPOSIT, reply=False)
     await query.message.reply(address, reply=False, reply_markup=ReplyKeyboardRemove())
-    await query.answer()
 
 
 # Adding item part
@@ -90,10 +89,12 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 @dp.message_handler(lambda msg: not msg.text.startswith('/'),
                     state=states.AddingItemStates.waiting_for_price, content_types=types.ContentTypes.TEXT)
 async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
-    if not msg.text.isdigit():
-        await msg.reply('Please send a digit', reply=False)
+    try:
+        price_in_satoshi = int(float(msg.text.replace(',', '.')) * 100_000_000)
+    except ValueError:
+        await msg.reply('Please send a correct value in BTC (for example, 0.001)', reply=False)
         return
-    await state.update_data(price=msg.text)
+    await state.update_data(price=price_in_satoshi)
     await msg.reply(replies.ASK_ITEM_PHOTO, reply=False, reply_markup=ReplyKeyboardRemove())
     await states.AddingItemStates.waiting_for_photo.set()
 
@@ -102,6 +103,7 @@ async def add_item_name(msg: types.Message, state: FSMContext, *args, **kwargs):
 async def add_item_photo(msg: types.Message, state: FSMContext, *args, **kwargs):
     await state.update_data(photo_file_id=msg.photo[0].file_id)
     item_data = await state.get_data()
+    item_data['price'] = item_data.pop('price') / 100_000_000
     await msg.reply(replies.ASK_ITEM_CONFIRMATION.format(**item_data), reply=False, reply_markup=keyboards.yes_or_no)
     await states.AddingItemStates.waiting_for_confirmation.set()
 
@@ -132,7 +134,7 @@ async def buy_item(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
         await query.answer(replies.NO_ITEMS_IN_SHOP)
         return
     message = replies.ITEM_DESCRIPTION.format(name=item.name, description=item.description,
-                                              price=item.price)
+                                              price=(item.price / 100_000_000))
     if item.photo_file_id:
         await query.message.reply_photo(item.photo_file_id, message,
                                         reply_markup=keyboards.shop_keyboard, reply=False)
@@ -160,9 +162,10 @@ async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **k
                 return
 
     await query.message.edit_media(InputMediaPhoto(item.photo_file_id,
-                                                   caption=replies.ITEM_DESCRIPTION.format(name=item.name,
-                                                                                           description=item.description,
-                                                                                           price=item.price)),
+                                                   caption=replies.ITEM_DESCRIPTION.format(
+                                                       name=item.name,
+                                                       description=item.description,
+                                                       price=(item.price / 100_000_000))),
                                    reply_markup=keyboards.shop_keyboard)
     await state.update_data(item_id=item.id)
     await query.answer()
@@ -186,7 +189,7 @@ async def get_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
     message = f'{replies.CART_REVIEW.format(n=len(cart))}\n\n'
     for n, item_id in enumerate(cart):
         item: Item = await sync_to_async(Item.objects.get)(id=item_id)
-        message += f'{replies.CARD_ITEM.format(n=n + 1, name=item.name, price=item.price)}\n'
+        message += f'{replies.CARD_ITEM.format(n=n + 1, name=item.name, price=(item.price / 100_000_000))}\n'
     if message:
         await query.message.reply(message, reply=False, reply_markup=keyboards.cart_keyboard)
     await query.answer()
@@ -226,8 +229,8 @@ async def set_address(msg: types.Message, user: User, state: FSMContext, *args, 
         total_price += item.price
     account = await sync_to_async(Account.objects.get)(user=user)
     await state.update_data(address=msg.text)
-    await msg.reply(replies.ADDRESS_SET_ASK_PAYMENT_CONFIRM.format(total_price=total_price,
-                                                                   n=n, balance=account.balance),
+    await msg.reply(replies.ADDRESS_SET_ASK_PAYMENT_CONFIRM.format(total_price=(total_price / 100_000_000),
+                                                                   n=n, balance=(account.balance / 100_000_000)),
                     reply=False, reply_markup=keyboards.yes_or_no)
     await states.CheckoutStates.waiting_for_payment_confirmation.set()
 
