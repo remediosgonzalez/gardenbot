@@ -1,7 +1,7 @@
 HELLO = 'Hello! Here is the basic bot that accepts payments in bitcoin. Currently using `{network_name}`'
 
 # Deposit part
-GENERATING_ADDRESS = 'Generation a new address for you. It may take some time.'
+GENERATING_ADDRESS = 'Generating a new address for you. It may take some time.'
 DEPOSIT = 'Done. Send some funds to the address sent below.' \
           'You will get a notification within an hour after the payment is made.'
 FUNDS_ADDED = '{balance} added to your account'

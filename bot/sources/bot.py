@@ -55,6 +55,7 @@ async def start(msg: types.Message, state: FSMContext, *args, **kwargs):
 @django_tools.auth_user_decorator
 async def deposit(query: types.CallbackQuery, user: User, *args, **kwargs):
     await query.message.reply(replies.GENERATING_ADDRESS, reply=False)
+    await query.answer()
     wallet = bitcoin_tools.create_or_open_wallet_for_user(user.id)
     address = bitcoin_tools.get_wallet_address(wallet)
     await query.message.reply(replies.DEPOSIT, reply=False)
@@ -270,7 +271,7 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
             user_id=msg.from_user.id,
             order_id=order.id,
             address=order.address,
-            items_text=str(*list(f'{n}. {item.name} (ID: {item.id})\n' for n, item in enumerate(items)))
+            items_text=str(*list(f'{n}. {item.name} (ID: {item.id})\n' for n, item in enumerate(items, start=1)))
         )
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton(text='Mark completed', callback_data=f'complete-order-{order.id}'))
