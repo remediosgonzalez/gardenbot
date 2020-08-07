@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from time import sleep
 
 import bitcoinlib
 import django
@@ -81,6 +82,8 @@ class Command(BaseCommand):
                 log.error(f'Wallet has network {wallet.network.name} when current network is {configs.NETWORK}')
             # noinspection PyProtectedMember
             wallet._session.close()
+            log.info('Sleeping 2 minutes...')
+            sleep(2*60)
         log.info('Script ended.')
 
 
