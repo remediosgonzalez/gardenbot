@@ -13,3 +13,5 @@ class WalletSweep(models.Model):
     user = models.ForeignKey(User, models.SET_NULL, null=True)
     from_wallet = models.CharField(max_length=255)
     amount = models.FloatField()
+
+    date_created = models.DateTimeField(auto_now_add=True)
