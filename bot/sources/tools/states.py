@@ -14,6 +14,10 @@ class CheckoutStates(StatesGroup):
     waiting_for_payment_confirmation = State()
 
 
+class AddingToCartStates(StatesGroup):
+    quantity = State()
+
+
 class SupportStates(StatesGroup):
     waiting_for_ticket = State()
 

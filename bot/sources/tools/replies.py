@@ -29,10 +29,13 @@ ITEM_DESCRIPTION = 'Name: {name}\n\n' \
                    'Price/unit: {price:.8f} BTC'
 NO_ITEMS_IN_SHOP = 'There is no items in the shop yet.'
 BUY_ITEM_SUCCESS = 'Item added to your cart'
+QUANTITY = 'How may items do you want to buy?'
+SEND_A_DIGIT = 'Please send a digit'
+SEND_LESS_QUANTITY = 'Please send less quantity'
 
 # Cart part
 CART_REVIEW = 'Your cart has {n} items.'
-CARD_ITEM = '{n}. {name}, the price is {price:.8f} BTC'
+CARD_ITEM = '{n}. {name} (quantity: {quantity}), the price is {price:.8f} BTC'
 EMPTY_CART_SUCCESS = 'Your cart is now empty.'
 
 # Checkout part

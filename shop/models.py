@@ -31,7 +31,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     item = models.ForeignKey(Item, models.SET_NULL, null=True)
     order = models.ForeignKey(Order, models.CASCADE)
-    quantity = models.IntegerField(default=1)  # TODO: [6/28/2020 by Mykola] make quantity working
+    quantity = models.SmallIntegerField(default=1)
 
 
 class ShippingPolicy(models.Model):

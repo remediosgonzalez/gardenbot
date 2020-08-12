@@ -1,4 +1,5 @@
 import logging
+import typing
 from urllib.parse import quote
 
 from aiogram import Bot, Dispatcher, types
@@ -193,10 +194,26 @@ async def prev_or_next(query: types.CallbackQuery, state: FSMContext, *args, **k
 
 
 @dp.callback_query_handler(lambda query: query.data == 'add_to_cart', state='*')
-async def add_to_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+async def add_to_cart_start(query: types.CallbackQuery, state: FSMContext, *args, **kwargs):
+    await query.message.answer(replies.QUANTITY)
+    await states.AddingToCartStates.quantity.set()
+    await query.answer()
+
+
+@dp.message_handler(lambda msg: not msg.text.startswith('/'),
+                    state=states.AddingToCartStates.quantity,
+                    content_types=types.ContentTypes.TEXT)
+async def add_to_cart(msg: types.Message, state: FSMContext):
+    if not msg.text.isdigit():
+        await msg.answer(replies.SEND_A_DIGIT)
+        return
+    if int(msg.text) > 32_767:
+        await msg.answer(replies.SEND_LESS_QUANTITY)
+        return
     user_data = await state.get_data()
-    await state.update_data(cart=[*user_data.pop('cart', []), user_data.pop('item_id')], **user_data)
-    await query.answer(replies.BUY_ITEM_SUCCESS)
+    await state.update_data(cart=[*user_data.pop('cart', []), {'id': user_data.pop('item_id'),
+                                                               'quantity': int(msg.text)}])
+    await msg.answer(replies.BUY_ITEM_SUCCESS)
 
 
 # Cart part
@@ -208,9 +225,12 @@ async def get_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
         await query.answer(replies.CART_IS_EMPTY)
         return
     message = f'{replies.CART_REVIEW.format(n=len(cart))}\n\n'
-    for n, item_id in enumerate(cart):
-        item: Item = await sync_to_async(Item.objects.get)(id=item_id)
-        message += f'{replies.CARD_ITEM.format(n=n + 1, name=item.name, price=(item.price / 100_000_000))}\n'
+    for n, cart_item in enumerate(cart, start=1):
+        item: Item = await sync_to_async(Item.objects.get)(id=cart_item.get('id'))
+        message += replies.CARD_ITEM.format(n=n,
+                                            name=item.name,
+                                            quantity=cart_item.get("quantity"),
+                                            price=(item.price / 100_000_000)) + '\n'
     if message:
         await query.message.reply(message, reply=False, reply_markup=keyboards.cart_keyboard)
     await query.answer()
@@ -237,17 +257,18 @@ async def checkout(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
 
 
 @dp.message_handler(lambda msg: not msg.text.startswith('/'),
-                    state=states.CheckoutStates.waiting_for_address, content_types=types.ContentTypes.TEXT)
+                    state=states.CheckoutStates.waiting_for_address,
+                    content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 async def set_address(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
     n = 0
     total_price = 0
-    for item_id in cart:
-        item: Item = await sync_to_async(Item.objects.get)(id=item_id)
-        n += 1
-        total_price += item.price
+    for cart_item in cart:
+        item: Item = await sync_to_async(Item.objects.get)(id=cart_item.get('id'))
+        n += cart_item.get('quantity', 1)
+        total_price += (item.price * cart_item.get('quantity'))
     account = await sync_to_async(Account.objects.get)(user=user)
     await state.update_data(address=msg.text)
     await msg.reply(replies.ADDRESS_SET_ASK_PAYMENT_CONFIRM.format(total_price=(total_price / 100_000_000),
@@ -257,18 +278,21 @@ async def set_address(msg: types.Message, user: User, state: FSMContext, *args, 
 
 
 @dp.message_handler(lambda msg: not msg.text.startswith('/'),
-                    state=states.CheckoutStates.waiting_for_payment_confirmation, content_types=types.ContentTypes.TEXT)
+                    state=states.CheckoutStates.waiting_for_payment_confirmation,
+                    content_types=types.ContentTypes.TEXT)
 @django_tools.auth_user_decorator
 async def make_order(msg: types.Message, user: User, state: FSMContext, *args, **kwargs):
+    if not msg.text == replies.YES:
+        return await start(msg, state)
     user_data = await state.get_data()
     cart = user_data.get('cart', [])
 
-    items = []
+    items: typing.List[typing.Dict] = []
     total_price = 0
-    for item_id in cart:
-        item: Item = await sync_to_async(Item.objects.get)(id=item_id)
-        items.append(item)
-        total_price += item.price
+    for cart_item in cart:
+        item: Item = await sync_to_async(Item.objects.get)(id=cart_item.get('id'))
+        items.append({'item': item, 'quantity': cart_item.get('quantity')})
+        total_price += (item.price * cart_item.get('quantity'))
     account = await sync_to_async(Account.objects.get)(user=user)
     if account.balance >= total_price:
         account.balance -= total_price
@@ -278,7 +302,10 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
                                                           price=total_price)
         await sync_to_async(order.save)()
         for item in items:
-            await sync_to_async(OrderItem.objects.create)(order=order, item=item)
+            item: dict
+            await sync_to_async(OrderItem.objects.create)(order=order,
+                                                          item=item.get('item'),
+                                                          quantity=item.get('quantity'))
         await msg.reply(replies.ORDER_SUCCESS.format(id=order.id), reply=False, reply_markup=ReplyKeyboardRemove())
         await state.finish()
 
@@ -291,7 +318,9 @@ async def make_order(msg: types.Message, user: User, state: FSMContext, *args, *
             user_id=msg.from_user.id,
             order_id=order.id,
             address=order.address,
-            items_text=str(*list(f'{n}. {item.name} (ID: {item.id})\n' for n, item in enumerate(items, start=1)))
+            items_text=str(*list(f'{n}. {item.get("item").name}, quantity: {item.get("quantity")} '
+                                 f'(ID: {item.get("item").id})\n'
+                                 for n, item in enumerate(items, start=1)))
         )
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton(text='Mark completed', callback_data=f'complete-order-{order.id}'))
