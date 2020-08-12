@@ -230,7 +230,7 @@ async def get_cart(query: types.CallbackQuery, state: FSMContext, *args, **kwarg
         message += replies.CARD_ITEM.format(n=n,
                                             name=item.name,
                                             quantity=cart_item.get("quantity"),
-                                            price=(item.price / 100_000_000)) + '\n'
+                                            price=((item.price * cart_item.get("quantity")) / 100_000_000)) + '\n'
     if message:
         await query.message.reply(message, reply=False, reply_markup=keyboards.cart_keyboard)
     await query.answer()
