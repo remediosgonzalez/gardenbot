@@ -36,7 +36,7 @@ dp.middleware.setup(LoggingMiddleware())
 async def start(msg: types.Message, state: FSMContext, *args, **kwargs):
     user, is_new = await django_tools.get_or_create_user(msg.from_user, return_tuple=True)
     user: User
-    if msg.get_args().isdigit():
+    if (args := msg.get_args()) and args.isdigit():
         if not is_new:
             await msg.reply(replies.NOT_A_NEW_USER, reply=False, reply_markup=ReplyKeyboardRemove())
             return
