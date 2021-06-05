@@ -17,7 +17,7 @@ cryptography==2.9.2
 daphne==2.5.0
 dj-database-url==0.5.0
 dj-redis-url==0.1.4
-Django==3.0.8
+Django==3.1.9
 django-heroku==0.3.1
 ecdsa==0.15
 emoji==0.5.4
